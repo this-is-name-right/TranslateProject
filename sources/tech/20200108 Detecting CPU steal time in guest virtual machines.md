@@ -1,4 +1,4 @@
-translating by this-is-name-right
+
 [#]: collector: (lujun9972)
 [#]: translator: (this-is-name-right)
 [#]: reviewer: ( )
@@ -8,49 +8,48 @@ translating by this-is-name-right
 [#]: via: (https://opensource.com/article/20/1/cpu-steal-time)
 [#]: author: (Jamie Fargen https://opensource.com/users/jamiefargen)
 
-Detecting CPU steal time in guest virtual machines
+检测虚拟机窃取CPU的时间
 ======
-Is your VM getting all of its vitamin CPU? Use GNU top to find out
-what's causing guest performance issues.
+你的虚拟机是否获得了它所需要的CPU时间？使用GNU的top命令来找出客户机的性能问题。
 ![and old computer and a new computer, representing migration to new software or hardware][1]
 
-CPU steal time is defined in the [GNU **top**][2] command as "time stolen from [a] VM by the hypervisor." CPU steal time occurs when a hypervisor process and a guest instance are trying to utilize the same hypervisor physical core (pCPU) at the same time. This results in less processor time available to the guest's virtual CPU (vCPU) and performance degradation for the guest.
+ CPU窃取时间被定义在[GNU **top**][2]命令手册中是这么定义的“时间被虚拟机的管理程序偷走了”。CPU窃取时间通常发生当虚拟机管理程序进程和客户机尝试同时利用同一虚拟机管理程序物理核心（pCPU）时。这导致客户机的的虚拟CPU（vCPU）可用的处理器时间更少，并且客户机的性能下降。
 
-In today's virtualized environments (which have become nearly universal with the adoption of public and private clouds), a guest instance can experience performance CPU steal time under several scenarios:
+在今天虚拟的环境（随着公共云和私有云的采用，它们几乎已经普及）一个客户机实例可以在以下几种情况下遭遇能CPU窃取时间：
 
-  * Oversubscription of the hypervisor and multiple guest VMs' vCPUs with high CPU utilization are running on the same pCPUs.
-  * The guest vCPU and its emulator thread are pinned to the same pCPU resulting in vhost processes stealing CPU time from the guest vCPU while processing I/O.
-  * Hypervisor processes, like monitoring, logging, and I/O processes, are concurrently using a pCPU that is also in use by a guest VM vCPU.
+  * 虚拟机管理程序分配过多的资源和多个CPU利用率高的客户机的vCPU在同一pCPU上运行。
+  * 客户机的vCPU及其模拟器线程固定在同一pCPU上，导致虚拟主机进程在处理I/O时从客户机vCPU窃取CPU时间。
+  * 虚拟机管理程序进程，例如监视，记录和I/O进程同时使用客户机的vCPU也正在在使用的pCPU。
 
 
 
-Normally, a systems engineer brought in to investigate an application or system performance issue will find that the system's performance is degraded due to CPU time stolen from the guest. The guest's performance issues usually become apparent in the form of low disk or network I/O performance, network packet loss, and other application performance anomalies.
+ 通常情况下，请来调查应用程序或系统性能问题的系统工程师会发现，由于客户机窃取了CPU时间，导致系统性能下降。客户机的性能问题通常表现为低磁盘或网络I/O性能，网络数据包丢失以及其他应用程序性能异常。
 
-Even when a system administrator is observing the guest and the hypervisor, it can be difficult to narrow down the cause of the guest instance's degraded performance due to CPU steal time. There are a few reasons for the difficulty. First, CPU steal time is not logged by any of the commonly monitored log files. A hypervisor that is being observed may be expected to be under heavy load but steal time can occur on hypervisors that are under normal load. And finally, administrators may not be aware that hypervisor CPU contention can be observed from within the guest VM instance using GNU top.
+ 即使系统管理员正在观察客户机和虚拟机系统管理程序，也可能很难检查出由于CPU窃取时间而导致客户机实例性能下降的原因。 有一些导致难检测困难的原因。 首先，任何日常监控的日志文件都不会记录CPU窃取时间。 可以预期观察到虚拟机管理程序处于重负载下的窃取时间，但是在正常负载下的虚拟机管理程序上发生的窃取时间不好观察到。最后，管理员可能不知道可以使用GNU的top命令从客户机实例中观察到管理程序CPU争用。
 
-Fortunately, GNU top indeed makes it quite easy to detect CPU steal time on a guest VM instance. Steal time is displayed in top's output at the end of line 3, which beings with **%Cpu(s)**, as shown in the following screenshots (it is the value at the end, labeled **st**.) The first example shows a guest with little steal time:
+幸运的是，GNU的top命令确实可以非常容易检测客户机实例上的CPU窃取时间。 窃取的时间会显示在top程序的输出的第三行的行末，并且以**%Cpu(s)**开头， 就像是下面的截图展示一样（用**st**来标识的值）。第一个例子展示了客户机只偷取了一点时间：
 
 ![Output of the top command showing low CPU steal time][3]
 
-Output of the top command from a guest experiencing a low CPU steal time of 0.2 st.
+客户机的输出显示了客户机正在进行很低的CPU窃取时间只有0.2st。
 
-This screenshot shows a guest experiencing heavy CPU steal time:
+这张截图展示了客户机正在进行很严重的CPU窃取时间：
 
 ![Output of the top command showing high CPU steal time][4]
 
-Output of the top command from a guest experiencing a heavy CPU steal time of 9.0 st.
+客户机的输出表明，客户机正在进行很严重的CPU窃取时间，高达0.9st。
 
-In both examples, the stress tool was executed with four processes that consumed all four vCPUs of the guest instance. In the first example, the hypervisor was relatively idle, so the guest's steal time was just 0.2. But in the second example, the stress tool was executed at the same time on the hypervisor with eight processes that consumed all eight of the hypervisors' pCPUs, which produced a high CPU steal time of 9.0.
+ 这两个例子，这个压力工具是用四个进程同时执行的，这些进程消耗了客户机实例的所有四个vCPU。 在第一个例子，虚拟机管理程序相对比较闲，因此客户机窃取扽e时间仅为0.2。但是第二个例子中，压力工具在虚拟机管理程序上同时执行，其中有八个进程消耗了所有八个虚拟机管理程序的vCPU，这产生高达9.0CPU窃取时间。
 
-There is another sign of steal time in the second example: the stress utility process cannot consume ~100% of the guests' vCPUs; it can only consume 99.3%, 99.3%, 86.4%, and 74.4%, respectively. In total, this is equal to 40.3% of a guest vCPU's being stolen. This is because the hypervisor is consuming cycles on the same pCPUs that the guest vCPU's processes are using.
+ 第二个例子中还有窃取时间的另一种迹象：压力进程无法消耗客户机100%的vCPUs;  它只能分别消耗99.3％，99.3％，86.4％和74.4％。 总的来说，这相当于客户机被盗取的40.3%。这是因为管理程序在客户机的vCPU进程正在使用的同一pCPUs上消耗周期。
 
-### Using top to mitigate poor performance
+### 使用top缓解性能不佳
 
-This example shows how the oversubscription of guest VM instances and other processes on a hypervisor can contend with a guest, and how to use GNU top to detect it based on the CPU steal time percentage on a guest VM.
+此示例展示了如何在虚拟机管理程序上与客户机实例和其他进程进行超额分配资源，以及如何使用GNU的top命令来检测客户机上的CPU窃用时间百分比。
 
-It is important to detect this type of performance degradation in a guest VM so that you can mitigate the cause of poor system and application performance. In a public cloud, the only solution might be migrating the instance or changing to an instance type with guaranteed pCPU service-level agreements (SLAs). In a private cloud, there are more options, but again, the simplest approach may be to migrate the instance to a hypervisor with lower utilization. However, if many guest instances experience high CPU steal time, you will need to make changes to how guests' and hypervisors' processes are managed to attain guest instances' performance SLAs.
+ 在客户机中检测这种类型的性能下降很重要，这样可以减少造成系统和应用程序性能不佳的罪魁祸首。 在公共云中，唯一的解决方案可能是迁移实例或更改为具有保证的pCPU服务级别协议（SLA）的实例类型。 在私有云中，存在更多选择，但同样，最简单的方法可能是将实例迁移到利用率较低的虚拟机管理程序中。然而，如果许多客户机实例有着很高的CPU窃取时间，那么你将需要更改管理程序管理客户机的管理方式，以达到最好的客户机实例的性能SLA。
 
-David Both explains the importance of keeping hardware cool and shares some Linux tools that can...
+David Both解释了保持硬件凉爽的重要性，并分享了一些可以使用的Linux工具。
 
 --------------------------------------------------------------------------------
 
